@@ -1,4 +1,4 @@
-# ComfyUI-Copilot 利用ガイド
+# ComfyUI-Copilot-Ollama 利用ガイド
 
 このドキュメントは、ComfyUI-Copilotのインストールと利用方法、およびOllamaと連携してローカルで大規模言語モデル（LLM）を利用するための環境構築について説明します。
 

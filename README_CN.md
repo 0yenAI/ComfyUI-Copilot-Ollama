@@ -1,4 +1,4 @@
-中文 ｜ [English](./README.md)
+[日本語](./README_JP.md) |　中文 ｜ [English](./README.md)
 
 <div align="center">
 
