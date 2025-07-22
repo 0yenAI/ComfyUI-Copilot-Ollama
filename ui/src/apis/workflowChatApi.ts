@@ -22,16 +22,22 @@ const setApiKey = (apiKey: string) => {
     localStorage.setItem('chatApiKey', apiKey);
 };
 
-// Get OpenAI configuration from localStorage
-const getOpenAiConfig = () => {
+// Get LLM configuration from localStorage
+const getLlmConfig = () => {
+    const llmProvider = localStorage.getItem('llmProvider') || 'openai';
     const openaiApiKey = localStorage.getItem('openaiApiKey');
     const openaiBaseUrl = localStorage.getItem('openaiBaseUrl') || 'https://api.openai.com/v1';
     const rsaPublicKey = localStorage.getItem('rsaPublicKey');
+    const ollamaBaseUrl = localStorage.getItem('ollamaBaseUrl') || 'http://localhost:11434';
+    const ollamaModel = localStorage.getItem('ollamaModel') || 'llama3';
     
     return { 
+        llmProvider,
         openaiApiKey: openaiApiKey || '', 
         openaiBaseUrl, 
-        rsaPublicKey 
+        rsaPublicKey, 
+        ollamaBaseUrl,
+        ollamaModel
     };
 };
 
@@ -40,7 +46,7 @@ const getBrowserLanguage = () => {
     return navigator.language || 'zh-CN'; // Default to Chinese if language is not available
 };
 
-// Add this helper function after getOpenAiConfig()
+// Add this helper function after getLlmConfig()
 const checkAndSaveApiKey = (response: Response) => {
   const apiKeyFromHeader = response.headers.get('User-Api-Key');
   if (apiKeyFromHeader && !localStorage.getItem('chatApiKey')) {
@@ -94,13 +100,13 @@ export namespace WorkflowChatAPI {
     try {
       const apiKey = getApiKey();
       const browserLanguage = getBrowserLanguage();
-      const { openaiApiKey, openaiBaseUrl, rsaPublicKey } = getOpenAiConfig();
+      const { llmProvider, openaiApiKey, openaiBaseUrl, rsaPublicKey, ollamaBaseUrl, ollamaModel } = getLlmConfig();
       // Generate a unique message ID for this chat request
       const messageId = generateUUID();
 
       // if (!apiKey) {
       //   yield {
-      //       text: 'API key is required. Please set your API key first.⚙\nIf you don\'t have an API key, please email us at ComfyUI-Copilot@service.alibaba.com and we will get back to you as soon as possible.',
+      //       text: 'API key is required. Please set your API key first.⚙\nIf you\'t have an API key, please email us at ComfyUI-Copilot@service.alibaba.com and we will get back to you as soon as possible.',
       //       finished: true
       //   } as ChatResponse;
       //   return;
@@ -131,8 +137,7 @@ export namespace WorkflowChatAPI {
         'Accept-Language': browserLanguage,
       };
       
-      // Add OpenAI configuration headers if available
-      if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
+      if (llmProvider === 'openai' && openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
         try {
           const encryptedApiKey = await encryptWithRsaPublicKey(openaiApiKey, rsaPublicKey);
           headers['Encrypted-Openai-Api-Key'] = encryptedApiKey;
@@ -140,6 +145,9 @@ export namespace WorkflowChatAPI {
         } catch (error) {
           console.error('Error encrypting OpenAI API key:', error);
         }
+      } else if (llmProvider === 'ollama') {
+        headers['Ollama-Base-Url'] = ollamaBaseUrl;
+        headers['Ollama-Model'] = ollamaModel;
       }
       
       // Create controller and combine with external signal if provided
@@ -228,7 +236,7 @@ export namespace WorkflowChatAPI {
     try {
       const apiKey = getApiKey();
       const browserLanguage = getBrowserLanguage();
-      const { openaiApiKey, openaiBaseUrl, rsaPublicKey } = getOpenAiConfig();
+      const { llmProvider, openaiApiKey, openaiBaseUrl, rsaPublicKey, ollamaBaseUrl, ollamaModel } = getLlmConfig();
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -240,8 +248,7 @@ export namespace WorkflowChatAPI {
         'Accept-Language': browserLanguage,
       };
       
-      // Add OpenAI configuration headers if available
-      if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
+      if (llmProvider === 'openai' && openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
         try {
           const encryptedApiKey = await encryptWithRsaPublicKey(openaiApiKey, rsaPublicKey);
           headers['Encrypted-Openai-Api-Key'] = encryptedApiKey;
@@ -249,6 +256,9 @@ export namespace WorkflowChatAPI {
         } catch (error) {
           console.error('Error encrypting OpenAI API key:', error);
         }
+      } else if (llmProvider === 'ollama') {
+        headers['Ollama-Base-Url'] = ollamaBaseUrl;
+        headers['Ollama-Model'] = ollamaModel;
       }
       
       const response = await fetch(`${BASE_URL}/api/chat/get_optimized_workflow`, {
@@ -280,7 +290,7 @@ export namespace WorkflowChatAPI {
   export async function batchGetNodeInfo(nodeTypes: string[]): Promise<any> {
     const apiKey = getApiKey();
     const browserLanguage = getBrowserLanguage();
-    const { openaiApiKey, openaiBaseUrl, rsaPublicKey } = getOpenAiConfig();
+    const { llmProvider, openaiApiKey, openaiBaseUrl, rsaPublicKey, ollamaBaseUrl, ollamaModel } = getLlmConfig();
     
     // Prepare headers
     const headers: Record<string, string> = {
@@ -290,8 +300,7 @@ export namespace WorkflowChatAPI {
       'Accept-Language': browserLanguage,
     };
     
-    // Add OpenAI configuration headers if available
-    if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
+    if (llmProvider === 'openai' && openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
       try {
         const encryptedApiKey = await encryptWithRsaPublicKey(openaiApiKey, rsaPublicKey);
         headers['Encrypted-Openai-Api-Key'] = encryptedApiKey;
@@ -299,6 +308,9 @@ export namespace WorkflowChatAPI {
       } catch (error) {
         console.error('Error encrypting OpenAI API key:', error);
       }
+    } else if (llmProvider === 'ollama') {
+      headers['Ollama-Base-Url'] = ollamaBaseUrl;
+      headers['Ollama-Model'] = ollamaModel;
     }
     
     const response = await fetch(`${BASE_URL}/api/chat/get_node_info_by_types`, {
@@ -331,7 +343,7 @@ export namespace WorkflowChatAPI {
       
       const apiKey = getApiKey();
       const browserLanguage = getBrowserLanguage();
-      const { openaiApiKey, openaiBaseUrl, rsaPublicKey } = getOpenAiConfig();
+      const { llmProvider, openaiApiKey, openaiBaseUrl, rsaPublicKey, ollamaBaseUrl, ollamaModel } = getLlmConfig();
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -341,8 +353,7 @@ export namespace WorkflowChatAPI {
         'Accept-Language': browserLanguage,
       };
       
-      // Add OpenAI configuration headers if available
-      if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
+      if (llmProvider === 'openai' && openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
         try {
           const encryptedApiKey = await encryptWithRsaPublicKey(openaiApiKey, rsaPublicKey);
           headers['Encrypted-Openai-Api-Key'] = encryptedApiKey;
@@ -350,6 +361,9 @@ export namespace WorkflowChatAPI {
         } catch (error) {
           console.error('Error encrypting OpenAI API key:', error);
         }
+      } else if (llmProvider === 'ollama') {
+        headers['Ollama-Base-Url'] = ollamaBaseUrl;
+        headers['Ollama-Model'] = ollamaModel;
       }
       
       const response = await fetch(`${BASE_URL}/api/chat/get_messages_by_session_id?session_id=${sessionId}`, {
@@ -399,7 +413,7 @@ export namespace WorkflowChatAPI {
     try {
       const apiKey = getApiKey();
       const browserLanguage = getBrowserLanguage();
-      const { openaiApiKey, openaiBaseUrl, rsaPublicKey } = getOpenAiConfig();
+      const { llmProvider, openaiApiKey, openaiBaseUrl, rsaPublicKey, ollamaBaseUrl, ollamaModel } = getLlmConfig();
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -409,8 +423,7 @@ export namespace WorkflowChatAPI {
         'Accept-Language': browserLanguage,
       };
       
-      // Add OpenAI configuration headers if available
-      if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
+      if (llmProvider === 'openai' && openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
         try {
           const encryptedApiKey = await encryptWithRsaPublicKey(openaiApiKey, rsaPublicKey);
           headers['Encrypted-Openai-Api-Key'] = encryptedApiKey;
@@ -418,6 +431,9 @@ export namespace WorkflowChatAPI {
         } catch (error) {
           console.error('Error encrypting OpenAI API key:', error);
         }
+      } else if (llmProvider === 'ollama') {
+        headers['Ollama-Base-Url'] = ollamaBaseUrl;
+        headers['Ollama-Model'] = ollamaModel;
       }
       
       const response = await fetch(`${BASE_URL}/api/chat/announcement`, {
@@ -520,6 +536,3 @@ export namespace WorkflowChatAPI {
     return result as { models: { name: string; image_enable: boolean }[] };
   }
 }
-
-  
-
